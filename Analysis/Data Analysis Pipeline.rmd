@@ -11,16 +11,15 @@ library(tidyverse)
 library(kableExtra)
 ```
 
-Load data directly from the Data subfolder,
 ```{r echo=F}
 # load the data from csv files
 my_gapminder <- read.csv("../Data/my_gapminder.csv")
 my_penguins <- read.csv("../Data/my_penguins.csv")
 ```
 
-use source() to source code directly from from the Code subfolde
-```{r}
-# load the code from source file
+
+```{r echo=F}
+# load the code from the Code subfolder
 src_f <- source("../Code/my_rf_cv.r")
 my_rf_cv <- src_f$value
 ```
@@ -85,7 +84,7 @@ ggsave(filename = "../Output/Figures/boxplot.pdf", ggbox, height = 5, width = 7)
 ggbox
 ```
 
-```{r}
+```{r echo=F, message=F}
 # format the data and save csv
 mse_2c <- plot_rf_cv_df %>% pivot_wider(names_from = k, values_from = mse)
 csv_col_names <- rep("", k_cv_len)
@@ -93,7 +92,7 @@ for (i in 1:k_cv_len) {
   csv_col_names[i] <- paste("k=", k_cv[i])
 }
 colnames(mse_2c) <- c("iter", csv_col_names)
-mse_2c %>% select(-iter)
+mse_2c <- mse_2c %>% select(-iter)
 write_csv(mse_2c, file = "../Output/Results/cv_mse_df.csv")
 ```
 
