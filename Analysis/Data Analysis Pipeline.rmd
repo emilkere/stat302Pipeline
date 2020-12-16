@@ -61,8 +61,11 @@ for (k in 1:k_cv_len) {
 }
 
 # generate the plot and save it
-ggbox <- plot_rf_cv_df %>% ggplot(aes(x = as.factor(k), y = mse, group =
-  as.factor(k))) + geom_boxplot(fill = "light blue") +
+ggbox <- plot_rf_cv_df %>% ggplot(aes(
+  x = as.factor(k), y = mse, group =
+    as.factor(k)
+)) +
+  geom_boxplot(fill = "light blue") +
   scale_x_discrete(
     name = "Number of Folds",
     breaks = as.factor(k_cv), limits = as.factor(k_cv)
