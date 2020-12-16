@@ -1,7 +1,7 @@
 ---
 title: "Data Analysis Pipeline"
 author: "Emil Keremidarski"
-date: "12/05/2020"
+date: "12/15/2020"
 output: html_document
 ---
 
@@ -13,12 +13,14 @@ library(kableExtra)
 
 Load data directly from the Data subfolder,
 ```{r echo=F}
+# load the data from csv files
 my_gapminder <- read.csv("../Data/my_gapminder.csv")
 my_penguins <- read.csv("../Data/my_penguins.csv")
 ```
 
 use source() to source code directly from from the Code subfolde
 ```{r}
+# load the code from source file
 src_f <- source("../Code/my_rf_cv.r")
 my_rf_cv <- src_f$value
 ```
@@ -59,6 +61,7 @@ for (k in 1:k_cv_len) {
   }
 }
 
+# generate the plot and save it
 ggbox <- plot_rf_cv_df %>% ggplot(aes(x = as.factor(k), y = mse, group =
   as.factor(k))) + geom_boxplot(fill = "light blue") +
   scale_x_discrete(
@@ -83,6 +86,7 @@ ggbox
 ```
 
 ```{r}
+# format the data and save csv
 mse_2c <- plot_rf_cv_df %>% pivot_wider(names_from = k, values_from = mse)
 csv_col_names <- rep("", k_cv_len)
 for (i in 1:k_cv_len) {
@@ -94,12 +98,14 @@ write_csv(mse_2c, file = "../Output/Results/cv_mse_df.csv")
 ```
 
 ```{r echo=F }
+# calculate statistics
 rf_cv_stats_df <- plot_rf_cv_df %>%
   group_by(k) %>%
   summarise(
     mean =
       mean(mse), sd = sd(mse), .groups = "drop"
   )
+# format and save
 colnames(rf_cv_stats_df) <- c("k", "Mean", "Standard Deviation")
 saveRDS(rf_cv_stats_df, file = "../Output/Results/rf_cv_stats_df.rds")
 
