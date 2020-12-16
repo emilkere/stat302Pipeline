@@ -1,0 +1,125 @@
+---
+title: "Data Analysis Pipeline"
+author: "Emil Keremidarski"
+date: "12/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(kableExtra)
+```
+
+Load data directly from the Data subfolder,
+```{r echo=F}
+my_gapminder <- read.csv("../Data/my_gapminder.csv")
+my_penguins <- read.csv("../Data/my_penguins.csv")
+```
+
+use source() to source code directly from from the Code subfolde
+```{r}
+src_f <- source("../Code/my_rf_cv.r")
+my_rf_cv <- src_f$value
+```
+
+## my_rf_cv tutorial
+
+In this tutorial we will demonstrate how to use `my_rf_cv` to analyze cross validation error
+by varying the number of folds being used.
+
+We will use `my_penguins` data set. We will assess MSE from Random Forest model with $100$ trees
+for predicting `body_mass_g` using covariates `bill_length_mm`, `bill_depth_mm`, and `flipper_length_mm`.
+
+We are interested in cross validation estimated MSE with different number of folds $k= 2,5$ and $10$. In order to esimate MSE for each $k$, we will run `my_rf_cv` multiple times, and calculate mean and standard deviation for each value of $k$. The code is demonstrated below:   
+
+
+```{r}
+k_cv <- c(2, 5, 10)
+reps <- 30
+k_cv_len <- length(k_cv)
+
+
+for (k in 1:k_cv_len) {
+  mse_reps <- rep(0, reps)
+  for (i in 1:reps) {
+    mse_reps[i] <- my_rf_cv(k = k_cv[k])
+  }
+  if (!exists("plot_rf_cv_df")) {
+    plot_rf_cv_df <- data.frame(
+      k = rep(k_cv[k], reps),
+      mse = mse_reps, iter = c(1:reps)
+    )
+  }
+  else {
+    plot_rf_cv_df <- rbind(plot_rf_cv_df, data.frame(k = rep(
+      k_cv[k],
+      reps
+    ), mse = mse_reps, iter = c(1:reps)))
+  }
+}
+
+ggbox <- plot_rf_cv_df %>% ggplot(aes(x = as.factor(k), y = mse, group =
+  as.factor(k))) + geom_boxplot(fill = "light blue") +
+  scale_x_discrete(
+    name = "Number of Folds",
+    breaks = as.factor(k_cv), limits = as.factor(k_cv)
+  ) +
+  theme_bw(base_size = 12) +
+  labs(
+    x = "Number of Folds", y = "CV Estimated MSE",
+    title = "CV Estimated MSE for Random Forest with 100 trees",
+    caption = "Graph 1: Box plot of Cross Validation Estimated MSE for
+    Random Forest with 100 trees with different number of folds. Each boxplot
+    displays the minimum, first quartile, median, third quartile, and maximum
+    average MSE for the given fold"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.caption = element_text(hjust = 0.5)
+  )
+ggsave(filename = "../Output/Figures/boxplot.pdf", ggbox, height = 5, width = 7)
+ggbox
+```
+
+```{r}
+mse_2c <- plot_rf_cv_df %>% pivot_wider(names_from = k, values_from = mse)
+csv_col_names <- rep("", k_cv_len)
+for (i in 1:k_cv_len) {
+  csv_col_names[i] <- paste("k=", k_cv[i])
+}
+colnames(mse_2c) <- c("iter", csv_col_names)
+mse_2c %>% select(-iter)
+write_csv(mse_2c, file = "../Output/Results/cv_mse_df.csv")
+```
+
+```{r echo=F }
+rf_cv_stats_df <- plot_rf_cv_df %>%
+  group_by(k) %>%
+  summarise(
+    mean =
+      mean(mse), sd = sd(mse), .groups = "drop"
+  )
+colnames(rf_cv_stats_df) <- c("k", "Mean", "Standard Deviation")
+saveRDS(rf_cv_stats_df, file = "../Output/Results/rf_cv_stats_df.rds")
+
+kble <- kable(rf_cv_stats_df,
+  format = "html", table.attr = "style='width:80%;'",
+  caption = paste("Table 1: Mean and Standard deviation for
+    Random Forest with 100 trees with different number of folds")
+)
+kable_styling(kble, "striped")
+```
+
+```{r echo=F}
+all_samples <- dim(my_penguins)[1]
+test_samples <- trunc(all_samples / k_cv)
+training_samples <- all_samples - test_samples
+
+text_training_samples <- paste(training_samples, collapse = ", ")
+text_test_samples <- paste(test_samples, collapse = ", ")
+```
+
+As can be seen on Graph 1, as well as in Table 1 as the number of folds increases the mean, and the standard deviation of the cross validation estimation for MSE decrease. This is expected, because as the number of folds increases, the number of samples used as training data increases as follows `r text_training_samples`. This should lead to improving model accuracy. At the same time, the number of samples used as test data decreases as follows - `r text_test_samples`. This leads to decreasing error variability, which explains smaller standard deviation.
+
+The difference in mean and standart deviation between $k=5$ and $k=10$ is small, and in some cases it is observed that the mean MSE for $k=5$ are smaller than the the mean MSE for $k=10$. This is indication that additional traing samles does not lead to further improvement of the model. Therefore we recommend using 5-fold cross validation.
